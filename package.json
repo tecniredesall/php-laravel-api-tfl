@@ -1,0 +1,8 @@
+{
+    "private": true,
+    "dependencies": {
+        "forever": "^0.15.3",
+        "forever-monitor": "^1.7.1",
+        "laravel-echo-server": "^1.4.1"
+    }
+}

@@ -1,0 +1,78 @@
+- name: configure php-fpm container
+  hosts: localhost
+  tasks:
+    - name: Install dependencies for php extensions
+      apk:
+        name: freetype,libpng,libjpeg-turbo,freetype-dev,libpng-dev,libjpeg-turbo-dev,libgcc,libstdc++,libx11,glib,libxrender,libxext,libintl,ttf-dejavu,ttf-droid,ttf-freefont,ttf-liberation,ttf-ubuntu-font-family,libzip-dev
+    - name: Install dependencies for php extensions from other repository
+      apk:
+        name: libcrypto1.0,libssl1.0
+        repository: http://dl-cdn.alpinelinux.org/alpine/v3.8/main
+    - name: Download composer php
+      get_url:
+        url: https://raw.githubusercontent.com/composer/getcomposer.org/76a7060ccb93902cd7576b67264ad91c8a2700e2/web/installer
+        dest: composer.phar
+        mode: '0777'
+    - name: Download wkhtmltopdf
+      get_url:
+        url: https://github.com/madnight/docker-alpine-wkhtmltopdf/raw/auto-build/wkhtmltopdf
+        dest: /usr/bin/wkhtmltopdf
+        mode: '0777'
+    - name: Create symlink for wkhtmltopdf
+      file:
+        src: /usr/bin/wkhtmltopdf
+        dest: /usr/local/bin/wkhtmltopdf-amd64
+        state: link
+    - name: Change the permissions over storage directory
+      file:
+        path: /var/www/html2/storage
+        mode: '0777'
+    - name: Install php extensions gd pdo and pdo_mysql
+      command: docker-php-ext-install gd pdo pdo_mysql
+    - name: Install zip extension for php
+      shell: |
+        docker-php-ext-configure zip --with-libzip=/usr/include
+        docker-php-ext-install zip
+    - name: Enable opcache extension for php
+      command: docker-php-ext-enable opcache
+    - name: Install composer dependencies
+      command: php composer.phar install
+    - name: Remove cache
+      command: php artisan cache:clear
+    - name: Configure opcache
+      blockinfile:
+        path: $PHP_INI_DIR/conf.d/opcache.ini
+        create: yes
+        block: |
+          opcache.enable=0
+          opcache.memory_consumption=512
+          opcache.interned_strings_buffer=64
+          opcache.max_accelerated_files=32531
+          opcache.validate_timestamps=0
+          opcache.save_comments=1
+          opcache.fast_shutdown=0
+    - name: Configure pool.conf
+      blockinfile:
+        path: /usr/local/etc/php-fpm.d/www.conf
+        marker: ';{mark}'
+        create: yes
+        block: |
+          [www]
+          user = www-data
+          group = www-data
+          listen = 9000
+          pm = dynamic
+          pm.max_children = 50
+          pm.start_servers = 7
+          pm.min_spare_servers = 7
+          pm.max_spare_servers = 10
+          pm.max_requests = 200
+          catch_workers_output = false
+          env[TMPDIR] = /var/www/html/storage
+          php_flag[display_errors] = on
+          php_flag[display_startup_errors] = on
+          php_value[memory_limit] = 256M
+          php_value[max_execution_time] = 0
+          php_value[upload_max_filesize] = 100M
+          php_value[post_max_size] = 100M
+          php_value[max_input_vars] = 9999

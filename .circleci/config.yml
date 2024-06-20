@@ -1,0 +1,87 @@
+version: 2.1
+
+orbs:
+  fpm-api: grainchainio/fpm-api@0.0.18
+
+workflows:
+  build_deploy:
+    jobs:
+      - fpm-api/build_aws:
+          context: production
+          filters:
+            branches:
+              only: master
+          name: silosys_api_build_api_prod
+          image_api: silosys/api-prod
+          image_proxy: silosys/api-proxy-prod
+      - approve_deploy_prod:
+          type: approval
+          requires:
+            - silosys_api_build_api_prod
+          filters:
+            branches:
+              only: master
+      - fpm-api/deploy_aws:
+          context: production
+          filters:
+            branches:
+              only: master
+          requires:
+            - approve_deploy_prod
+          name: silosys_api_deploy_api_prod
+          image_api: silosys/api-prod
+          image_proxy: silosys/api-proxy-prod
+          kubernetes_cluster: GrainChain
+          chart: grainchain/silosys
+          releases: tam-comercializadora,tam-cooperativa,tam-navar,tam-sanfernando,tam-sanfernandosur,tam-tresmarias,mexico-prod,garciagrain,tam-007,tam-008,tam-009,tam-010,dirttech,histar,tam-011
+          helm_fpm_image_path: api.fpm.image
+          helm_nginx_image_path: api.nginx.image
+
+      - fpm-api/build_gcp:
+          context: staging
+          filters:
+            branches:
+              only: staging
+          name: silosys_api_build_api_staging
+          image_api: silosys/api-staging
+          image_proxy: silosys/api-proxy-staging
+      - fpm-api/deploy_gcp:
+          context: staging
+          filters:
+            branches:
+              only: staging
+          requires:
+            - silosys_api_build_api_staging
+          name: silosys_api_deploy_api_staging
+          image_api: silosys/api-staging
+          image_proxy: silosys/api-proxy-staging
+          kubernetes_cluster: develop
+          chart: grainchain/silosys
+          releases: silosys-staging
+          helm_fpm_image_path: api.fpm.image
+          helm_nginx_image_path: api.nginx.image
+
+
+      - fpm-api/build_gcp:
+          context: develop
+          filters:
+            branches:
+              only: development
+          name: silosys_api_build_api_develop
+          image_api: silosys/api-develop
+          image_proxy: silosys/api-proxy-develop
+      - fpm-api/deploy_gcp:
+          context: develop
+          filters:
+            branches:
+              only: development
+          requires:
+            - silosys_api_build_api_develop
+          name: silosys_api_deploy_api_develop
+          image_api: silosys/api-develop
+          image_proxy: silosys/api-proxy-develop
+          kubernetes_cluster: develop
+          chart: grainchain/silosys
+          releases: silosys-develop
+          helm_fpm_image_path: api.fpm.image
+          helm_nginx_image_path: api.nginx.image

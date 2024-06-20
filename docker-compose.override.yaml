@@ -1,0 +1,13 @@
+version: '3'
+services:
+  nginx:
+    ports:
+      - 80:80
+    volumes:
+      - .:/var/www/html
+  api:
+    container_name: api-silosys
+    env_file:
+      - .env
+    volumes:
+      - .:/var/www/html
